@@ -1,7 +1,14 @@
 import { useState, useEffect, useRef } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { motion } from "framer-motion";
 
 export default function ChinesePracticeApp() {
-  const [cards, setCards] = useState([]);
+  const [categories, setCategories] = useState(() => {
+    return JSON.parse(localStorage.getItem("categories")) || {};
+  });
+  const [currentCategory, setCurrentCategory] = useState("");
   const [englishWord, setEnglishWord] = useState("");
   const [pinyin, setPinyin] = useState("");
   const [chineseCharacter, setChineseCharacter] = useState("");
@@ -9,33 +16,42 @@ export default function ChinesePracticeApp() {
   const [strokeOrderSvg, setStrokeOrderSvg] = useState(null);
   const [quizMode, setQuizMode] = useState(false);
   const canvasRef = useRef(null);
-
+  
+  useEffect(() => {
+    localStorage.setItem("categories", JSON.stringify(categories));
+  }, [categories]);
+  
   useEffect(() => {
     if (currentCard) {
       fetchStrokeOrder(currentCard.chinese);
     }
   }, [currentCard]);
 
+  const addCategory = () => {
+    if (!categories[currentCategory]) {
+      setCategories({ ...categories, [currentCategory]: [] });
+    }
+  };
+
   const addCard = () => {
-    if (englishWord && chineseCharacter) {
-      setCards([...cards, { english: englishWord, pinyin, chinese: chineseCharacter }]);
+    if (englishWord && chineseCharacter && currentCategory) {
+      const newCard = { english: englishWord, pinyin, chinese: chineseCharacter };
+      setCategories({
+        ...categories,
+        [currentCategory]: [...(categories[currentCategory] || []), newCard],
+      });
       setEnglishWord("");
       setPinyin("");
       setChineseCharacter("");
     }
   };
 
-  const startPractice = () => {
-    if (cards.length > 0) {
-      setQuizMode(false);
-      setCurrentCard(cards[Math.floor(Math.random() * cards.length)]);
-    }
-  };
-
   const startQuiz = () => {
-    if (cards.length > 0) {
+    if (categories[currentCategory]?.length > 0) {
       setQuizMode(true);
-      setCurrentCard(cards[Math.floor(Math.random() * cards.length)]);
+      setCurrentCard(
+        categories[currentCategory][Math.floor(Math.random() * categories[currentCategory].length)]
+      );
     }
   };
 
@@ -65,61 +81,46 @@ export default function ChinesePracticeApp() {
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Chinese Character Practice</h1>
-      <div>
-        <input
-          type="text"
-          placeholder="English Word"
-          value={englishWord}
-          onChange={(e) => setEnglishWord(e.target.value)}
+    <div className="p-6 space-y-4">
+      <h1 className="text-xl font-bold">Chinese Character Practice</h1>
+      <div className="space-y-2">
+        <Input
+          placeholder="New Category"
+          value={currentCategory}
+          onChange={(e) => setCurrentCategory(e.target.value)}
         />
-        <input
-          type="text"
-          placeholder="Pinyin"
-          value={pinyin}
-          onChange={(e) => setPinyin(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Chinese Character"
-          value={chineseCharacter}
-          onChange={(e) => setChineseCharacter(e.target.value)}
-        />
-        <button onClick={addCard}>Add Flashcard</button>
+        <Button onClick={addCategory}>Add Category</Button>
+        <select onChange={(e) => setCurrentCategory(e.target.value)}>
+          <option value="">Select a category</option>
+          {Object.keys(categories).map((category) => (
+            <option key={category} value={category}>{category}</option>
+          ))}
+        </select>
+      </div>
+      <div className="space-y-2">
+        <Input placeholder="English Word" value={englishWord} onChange={(e) => setEnglishWord(e.target.value)} />
+        <Input placeholder="Pinyin" value={pinyin} onChange={(e) => setPinyin(e.target.value)} />
+        <Input placeholder="Chinese Character" value={chineseCharacter} onChange={(e) => setChineseCharacter(e.target.value)} />
+        <Button onClick={addCard}>Add Flashcard</Button>
       </div>
       {currentCard ? (
-        <div>
-          {!quizMode ? (
-            <>
-              <h2>{currentCard.english} ({currentCard.pinyin})</h2>
-              <div style={{ fontSize: "2rem" }}>{currentCard.chinese}</div>
-              {strokeOrderSvg ? (
-                <div dangerouslySetInnerHTML={{ __html: strokeOrderSvg }} />
-              ) : (
-                <p>No stroke order found.</p>
-              )}
-              <canvas ref={canvasRef} width={300} height={300} style={{ border: "1px solid black" }}></canvas>
-              <button onClick={clearCanvas}>Clear</button>
-            </>
-          ) : (
-            <>
-              <h2>{currentCard.english} ({currentCard.pinyin})</h2>
-              <canvas ref={canvasRef} width={300} height={300} style={{ border: "1px solid black" }}></canvas>
-              <button onClick={clearCanvas}>Clear</button>
-              <button onClick={startQuiz}>Next Question</button>
-            </>
-          )}
-        </div>
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <h2 className="text-lg font-semibold">{currentCard.english} ({currentCard.pinyin})</h2>
+            <div className="border p-4 text-4xl text-center">{currentCard.chinese}</div>
+            {strokeOrderSvg ? (
+              <div dangerouslySetInnerHTML={{ __html: strokeOrderSvg }} />
+            ) : (
+              <p>No stroke order found.</p>
+            )}
+            <canvas ref={canvasRef} width={300} height={300} className="border w-full h-64"></canvas>
+            <Button onClick={clearCanvas}>Clear</Button>
+          </CardContent>
+        </Card>
       ) : (
-        <div>
-          <button onClick={startPractice} disabled={cards.length === 0}>
-            Start Practice
-          </button>
-          <button onClick={startQuiz} disabled={cards.length === 0}>
-            Start Quiz
-          </button>
-        </div>
+        <Button onClick={startQuiz} disabled={!categories[currentCategory]?.length}>
+          Start Quiz
+        </Button>
       )}
     </div>
   );
