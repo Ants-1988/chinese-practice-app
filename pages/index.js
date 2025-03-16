@@ -16,11 +16,12 @@ export default function ChinesePracticeApp() {
   const [strokeOrderSvg, setStrokeOrderSvg] = useState(null);
   const [quizMode, setQuizMode] = useState(false);
   const canvasRef = useRef(null);
-  
+  const isDrawing = useRef(false);
+
   useEffect(() => {
     localStorage.setItem("categories", JSON.stringify(categories));
   }, [categories]);
-  
+
   useEffect(() => {
     if (currentCard) {
       fetchStrokeOrder(currentCard.chinese);
@@ -28,7 +29,7 @@ export default function ChinesePracticeApp() {
   }, [currentCard]);
 
   const addCategory = () => {
-    if (!categories[currentCategory]) {
+    if (currentCategory && !categories[currentCategory]) {
       setCategories({ ...categories, [currentCategory]: [] });
     }
   };
@@ -72,23 +73,37 @@ export default function ChinesePracticeApp() {
     }
   };
 
+  const startDrawing = (event) => {
+    isDrawing.current = true;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    ctx.beginPath();
+    ctx.moveTo(event.nativeEvent.offsetX, event.nativeEvent.offsetY);
+  };
+
+  const draw = (event) => {
+    if (!isDrawing.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    ctx.lineTo(event.nativeEvent.offsetX, event.nativeEvent.offsetY);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    isDrawing.current = false;
+  };
+
   const clearCanvas = () => {
     const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
   return (
     <div className="p-6 space-y-4">
       <h1 className="text-xl font-bold">Chinese Character Practice</h1>
       <div className="space-y-2">
-        <Input
-          placeholder="New Category"
-          value={currentCategory}
-          onChange={(e) => setCurrentCategory(e.target.value)}
-        />
+        <Input placeholder="New Category" value={currentCategory} onChange={(e) => setCurrentCategory(e.target.value)} />
         <Button onClick={addCategory}>Add Category</Button>
         <select onChange={(e) => setCurrentCategory(e.target.value)}>
           <option value="">Select a category</option>
@@ -113,7 +128,16 @@ export default function ChinesePracticeApp() {
             ) : (
               <p>No stroke order found.</p>
             )}
-            <canvas ref={canvasRef} width={300} height={300} className="border w-full h-64"></canvas>
+            <canvas
+              ref={canvasRef}
+              width={300}
+              height={300}
+              className="border w-full h-64"
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+            ></canvas>
             <Button onClick={clearCanvas}>Clear</Button>
           </CardContent>
         </Card>
