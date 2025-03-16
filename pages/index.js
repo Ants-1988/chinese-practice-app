@@ -1,11 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function ChinesePracticeApp() {
   const [cards, setCards] = useState([]);
   const [englishWord, setEnglishWord] = useState("");
+  const [pinyin, setPinyin] = useState("");
   const [chineseCharacter, setChineseCharacter] = useState("");
   const [currentCard, setCurrentCard] = useState(null);
   const [strokeOrderSvg, setStrokeOrderSvg] = useState(null);
+  const [quizMode, setQuizMode] = useState(false);
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     if (currentCard) {
@@ -15,14 +18,23 @@ export default function ChinesePracticeApp() {
 
   const addCard = () => {
     if (englishWord && chineseCharacter) {
-      setCards([...cards, { english: englishWord, chinese: chineseCharacter }]);
+      setCards([...cards, { english: englishWord, pinyin, chinese: chineseCharacter }]);
       setEnglishWord("");
+      setPinyin("");
       setChineseCharacter("");
     }
   };
 
   const startPractice = () => {
     if (cards.length > 0) {
+      setQuizMode(false);
+      setCurrentCard(cards[Math.floor(Math.random() * cards.length)]);
+    }
+  };
+
+  const startQuiz = () => {
+    if (cards.length > 0) {
+      setQuizMode(true);
       setCurrentCard(cards[Math.floor(Math.random() * cards.length)]);
     }
   };
@@ -44,6 +56,14 @@ export default function ChinesePracticeApp() {
     }
   };
 
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  };
+
   return (
     <div style={{ padding: "20px" }}>
       <h1>Chinese Character Practice</h1>
@@ -56,6 +76,12 @@ export default function ChinesePracticeApp() {
         />
         <input
           type="text"
+          placeholder="Pinyin"
+          value={pinyin}
+          onChange={(e) => setPinyin(e.target.value)}
+        />
+        <input
+          type="text"
           placeholder="Chinese Character"
           value={chineseCharacter}
           onChange={(e) => setChineseCharacter(e.target.value)}
@@ -64,18 +90,36 @@ export default function ChinesePracticeApp() {
       </div>
       {currentCard ? (
         <div>
-          <h2>{currentCard.english}</h2>
-          <div style={{ fontSize: "2rem" }}>{currentCard.chinese}</div>
-          {strokeOrderSvg ? (
-            <div dangerouslySetInnerHTML={{ __html: strokeOrderSvg }} />
+          {!quizMode ? (
+            <>
+              <h2>{currentCard.english} ({currentCard.pinyin})</h2>
+              <div style={{ fontSize: "2rem" }}>{currentCard.chinese}</div>
+              {strokeOrderSvg ? (
+                <div dangerouslySetInnerHTML={{ __html: strokeOrderSvg }} />
+              ) : (
+                <p>No stroke order found.</p>
+              )}
+              <canvas ref={canvasRef} width={300} height={300} style={{ border: "1px solid black" }}></canvas>
+              <button onClick={clearCanvas}>Clear</button>
+            </>
           ) : (
-            <p>No stroke order found.</p>
+            <>
+              <h2>{currentCard.english} ({currentCard.pinyin})</h2>
+              <canvas ref={canvasRef} width={300} height={300} style={{ border: "1px solid black" }}></canvas>
+              <button onClick={clearCanvas}>Clear</button>
+              <button onClick={startQuiz}>Next Question</button>
+            </>
           )}
         </div>
       ) : (
-        <button onClick={startPractice} disabled={cards.length === 0}>
-          Start Practice
-        </button>
+        <div>
+          <button onClick={startPractice} disabled={cards.length === 0}>
+            Start Practice
+          </button>
+          <button onClick={startQuiz} disabled={cards.length === 0}>
+            Start Quiz
+          </button>
+        </div>
       )}
     </div>
   );
